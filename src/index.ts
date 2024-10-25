@@ -48,7 +48,7 @@ exports.handler = async (event: any, _context: any) => {
       [jsonFieldId]: {
         type: 'json',
         json: {
-          value: message
+          value: JSON.stringify(message)
         }
       }
     } as unknown as Record<string, JsonRecordProperty>
