@@ -1,10 +1,10 @@
 import {
   BooleanRecordProperty,
   Cogfy,
+  JsonRecordProperty,
   QueryRecordsCommand,
   TextRecordProperty
 } from 'cogfy'
-import { whapi } from './clients'
 import { PostMessageTextBody } from './types'
 
 exports.handler = async (event: any, _context: any) => {
@@ -38,30 +38,34 @@ exports.handler = async (event: any, _context: any) => {
   const recordsToPublish = (await cogfy.records.query(collectionId, filter)).data
 
   recordsToPublish.map(async record => {
-    const bodyTextId = isCboRule ? process.env.COGFY_CBO_BODY_FIELD_ID! : process.env.COGFY_SBC_BODY_FIELD_ID!
-    const body = (record.properties[bodyTextId] as TextRecordProperty).text.value!
+    const bodyFieldId = isCboRule ? process.env.COGFY_CBO_BODY_FIELD_ID! : process.env.COGFY_SBC_BODY_FIELD_ID!
+    const body = (record.properties[bodyFieldId] as TextRecordProperty).text.value!
 
     const message: PostMessageTextBody = { to: channelId, body }
+    const jsonFieldId = isCboRule ? process.env.COGFY_CBO_JSON_FIELD_ID! : process.env.COGFY_SBC_JSON_FIELD_ID!
 
-    try {
-      const response = await whapi.postMessageText(message)
-
-      if (response.sent) {
-        const booleanFieldId = isCboRule ? process.env.COGFY_CBO_BOOLEAN_FIELD_ID! : process.env.COGFY_SBC_BOOLEAN_FIELD_ID!
-
-        const properties = {
-          [booleanFieldId]: {
-            type: 'boolean',
-            boolean: {
-              value: true
-            }
-          }
-        } as unknown as Record<string, BooleanRecordProperty>
-
-        await cogfy.records.update(collectionId, record.id, { properties })
+    const jsonProperties = {
+      [jsonFieldId]: {
+        type: 'json',
+        json: {
+          value: message
+        }
       }
-    } catch (err) {
-      throw new Error(err)
-    }
+    } as unknown as Record<string, JsonRecordProperty>
+
+    await cogfy.records.update(collectionId, record.id, { properties: jsonProperties })
+
+    const booleanFieldId = isCboRule ? process.env.COGFY_CBO_BOOLEAN_FIELD_ID! : process.env.COGFY_SBC_BOOLEAN_FIELD_ID!
+
+    const booleanProperties = {
+      [booleanFieldId]: {
+        type: 'boolean',
+        boolean: {
+          value: true
+        }
+      }
+    } as unknown as Record<string, BooleanRecordProperty>
+
+    await cogfy.records.update(collectionId, record.id, { properties: booleanProperties })
   })
 }
