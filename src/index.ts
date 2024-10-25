@@ -6,10 +6,11 @@ import {
 import { cogfy, whapi } from './clients'
 import { PostMessageTextBody } from './types'
 
-const collectionId = process.env.COGFY_COLLECTION_ID ?? 'xyz'
-
 exports.handler = async (event: any, _context: any) => {
-  const isCboRule = event.resources[0].inclues('rule/cbo-clipping-scheduler')
+  const isCboRule = event.resources[0].includes('rule/cbo-clipping-scheduler')
+
+  const collectionId = isCboRule ? process.env.COGFY_CBO_COLLECTION_ID! : process.env.COGFY_SBC_COLLECTION_ID!
+  const apiKey = isCboRule ? process.env.COGFY_CBO_API_KEY! : process.env.COGFY_SBC_API_KEY!
 
   // Obter todos os records e verificar se o status é publicável
   const channelId = isCboRule ? process.env.CBO_CHANNEL_ID! : process.env.SBC_CHANNEL_ID!
@@ -31,19 +32,21 @@ exports.handler = async (event: any, _context: any) => {
     }
   }
 
-  const recordsToPublish = (await cogfy.queryRecords(collectionId, filter)).data
+  const recordsToPublish = (await cogfy.queryRecords(apiKey, collectionId, filter)).data
 
   recordsToPublish.map(async record => {
     const bodyTextId = isCboRule ? process.env.COGFY_CBO_BODY_FIELD_ID! : process.env.COGFY_SBC_BODY_FIELD_ID!
 
     const body = (record.properties[bodyTextId] as TextRecordProperty).text.value!
 
-    await postMessage(isCboRule, record.id, channelId, body)
+    await postMessage(apiKey, isCboRule, collectionId, record.id, channelId, body)
   })
 }
 
 async function postMessage (
+  apiKey: string,
   isCboRule: boolean,
+  collectionId: string,
   recordId: string,
   channelId: string,
   body: string
@@ -64,7 +67,7 @@ async function postMessage (
         }
       } as unknown as Record<string, BooleanRecordProperty>
 
-      await cogfy.updateRecords(collectionId, recordId, { properties })
+      await cogfy.updateRecords(apiKey, collectionId, recordId, { properties })
     }
   } catch (err) {
     throw new Error(err)

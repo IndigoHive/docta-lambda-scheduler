@@ -7,19 +7,18 @@ import {
 } from 'cogfy'
 
 class CogfyClient {
-  private readonly apiKey: string = process.env.COGFY_API_KEY ?? 'xyz'
-  private readonly cogfy: Cogfy = new Cogfy({ apiKey: this.apiKey })
-
   /**
    *  GET | Gets the query data from a record
    *  @param {string} collectionId - The collection ID in Cogfy
    *  @param {QueryRecordsCommand} query - The query to filter the records
   */
   async queryRecords (
+    apiKey: string,
     collectionId: string,
     query: QueryRecordsCommand
   ): Promise<QueryRecordsResult> {
-    return await this.cogfy.records.query(collectionId, query)
+    const cogfy = new Cogfy({ apiKey })
+    return await cogfy.records.query(collectionId, query)
   }
 
   /**
@@ -29,11 +28,13 @@ class CogfyClient {
    *  @param {UpdateRecordCommand} command - The command with the updated field properties
   */
   async updateRecords (
+    apiKey: string,
     collectionId: string,
     recordId: string,
     command: UpdateRecordCommand
   ): Promise<UpdateRecordResult> {
-    return await this.cogfy.records.update(collectionId, recordId, command)
+    const cogfy = new Cogfy({ apiKey })
+    return await cogfy.records.update(collectionId, recordId, command)
   }
 }
 
