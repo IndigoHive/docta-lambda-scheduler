@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prebuild": "del /q dist",
+    "build": "esbuild src/index.ts --bundle --loader:.node=file --minify --sourcemap --platform=node --target=es2020 --outfile=dist/index.js --external:./xhr-sync-worker.js",
+    "postbuild": "cd dist && 7z a -tzip index.zip index.js*",
     "dev": "npx tsx src/index.ts",
     "lint": "npx eslint ."
   },
