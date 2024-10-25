@@ -1,9 +1,4 @@
 import {
-  AsyncTask,
-  CronJob,
-  ToadScheduler
-} from 'toad-scheduler'
-import {
   BooleanRecordProperty,
   QueryRecordsCommand,
   TextRecordProperty
@@ -13,10 +8,13 @@ import { PostMessageTextBody } from './types'
 
 const collectionId = process.env.COGFY_COLLECTION_ID ?? 'xyz'
 
-;(async function scheduleMessage () {
+exports.handler = async (event: any, _context: any) => {
+  const isCboRule = event.resources[0].inclues('rule/cbo-clipping-scheduler')
+
   // Obter todos os records e verificar se o status é publicável
-  const selectionFieldId = ''
-  const optionSelectedId = '' // Selection Field Option
+  const channelId = isCboRule ? process.env.CBO_CHANNEL_ID! : process.env.SBC_CHANNEL_ID!
+  const selectionFieldId = isCboRule ? process.env.COGFY_CBO_SELECTION_FIELD_ID! : process.env.COGFY_SBC_SELECTION_FIELD_ID!
+  const optionSelectedId = isCboRule ? process.env.COGFY_CBO_OPTION_SELECTED_ID! : process.env.COGFY_SBC_OPTION_SELECTED_ID!
 
   const filter: QueryRecordsCommand = {
     filter: {
@@ -35,29 +33,17 @@ const collectionId = process.env.COGFY_COLLECTION_ID ?? 'xyz'
 
   const recordsToPublish = (await cogfy.queryRecords(collectionId, filter)).data
 
-  recordsToPublish.map(record => {
-    const cronFieldId = '' // Cron schedule property
-    const channelFieldId = ''
-    const textFieldId = ''
+  recordsToPublish.map(async record => {
+    const bodyTextId = isCboRule ? process.env.COGFY_CBO_BODY_FIELD_ID! : process.env.COGFY_SBC_BODY_FIELD_ID!
 
-    const cronExpression = (record.properties[cronFieldId] as TextRecordProperty).text.value!
-    const channel = (record.properties[channelFieldId] as TextRecordProperty).text.value!
-    const body = (record.properties[textFieldId] as TextRecordProperty).text.value!
+    const body = (record.properties[bodyTextId] as TextRecordProperty).text.value!
 
-    // Agendar a postagem utilizando cron
-    const scheduler = new ToadScheduler()
-
-    const task = new AsyncTask('send message using Whapi', async () =>
-      await postMessage(
-      record.id, channel, body
-    ))
-    const job = new CronJob({ cronExpression }, task, { preventOverrun: true })
-
-    scheduler.addCronJob(job)
+    await postMessage(isCboRule, record.id, channelId, body)
   })
-})()
+}
 
 async function postMessage (
+  isCboRule: boolean,
   recordId: string,
   channelId: string,
   body: string
@@ -67,7 +53,7 @@ async function postMessage (
     const response = await whapi.postMessageText(message)
 
     if (response.sent) {
-      const booleanFieldId = ''
+      const booleanFieldId = isCboRule ? process.env.COGFY_CBO_BOOLEAN_FIELD_ID! : process.env.COGFY_SBC_BOOLEAN_FIELD_ID!
 
       const properties = {
         [booleanFieldId]: {
